@@ -1,6 +1,6 @@
 # SPEC 01 — Página de inicio estática
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** Ninguno
 > **Fecha:** 2026-10-07
 > **Objetivo:** Reemplazar la página Whitelabel de Spring Boot en la raíz (`/`) por una página estática "Hello World" servida desde la carpeta `public/` en la raíz del proyecto, configurada mediante `config/application.yml`.
@@ -43,14 +43,14 @@ Esta funcionalidad no introduce nuevas estructuras de datos.
 
 ## Criterios de aceptación
 
-- [ ] Al iniciar la aplicación y acceder a `/`, se devuelve `public/index.html`.
-- [ ] El HTML devuelto contiene el texto "Hello World".
-- [ ] `index.html` declara Vue 3 mediante CDN.
-- [ ] `index.html` carga matcha.css mediante CDN.
-- [ ] `config/application.yml` existe en la raíz del proyecto y configura `spring.web.resources.static-locations: file:public/`.
-- [ ] Al acceder a una ruta inexistente, sigue apareciendo la página Whitelabel de Spring Boot.
-- [ ] El escenario Cucumber "Un usuario accede a la página de inicio" pasa.
-- [ ] `./mvnw clean test package` finaliza con éxito.
+- [x] Al iniciar la aplicación y acceder a `/`, se devuelve `public/index.html`.
+- [x] El HTML devuelto contiene el texto "Hello World".
+- [x] `index.html` declara Vue 3 mediante CDN.
+- [x] `index.html` carga matcha.css mediante CDN.
+- [x] `config/application.yml` existe en la raíz del proyecto y configura `spring.web.resources.static-locations: file:public/`.
+- [x] Al acceder a una ruta inexistente, sigue apareciendo la página Whitelabel de Spring Boot.
+- [x] El escenario Cucumber "Un usuario accede a la página de inicio" pasa.
+- [x] `./mvnw clean test package` finaliza con éxito.
 
 ## Decisiones tomadas y descartadas
 
@@ -59,6 +59,12 @@ Esta funcionalidad no introduce nuevas estructuras de datos.
 - **No:** Vue renderiza el contenido. Por ahora solo se declara el CDN; el texto "Hello World" es estático para que los tests con `TestRestTemplate` sean directos y fiables.
 - **No:** Reemplazo global de la página Whitelabel. Se mantiene para errores HTTP como 404 y 500.
 - **No:** Empaquetar los archivos estáticos dentro del JAR. Se sirven desde el sistema de archivos para respetar la ubicación `public/` en la raíz.
+
+### Decisiones técnicas durante la implementación
+
+- **Sí:** `CucumberSpringConfiguration` en el glue (`com.example.demo.bdd.steps`) con `@CucumberContextConfiguration` + `@SpringBootTest(RANDOM_PORT)` + `@AutoConfigureTestRestTemplate`. Sin ella, cucumber-spring no inyecta beans en los steps; en Spring Boot 4 la auto-configuración de `TestRestTemplate` es opt-in.
+- **Sí:** `spring-boot-starter-restclient` en scope test. En Spring Boot 4, `TestRestTemplate` vive en el paquete `org.springframework.boot.resttestclient` y su auto-configuración necesita `RestTemplateBuilder` del módulo `spring-boot-restclient`.
+- **Observación:** Surefire no descubre `CucumberTestRunner` en `mvn test` (el nombre no cumple los patrones por defecto `*Test`/`*Tests`). La suite BDD se ejecuta con `./mvnw test -Dtest=CucumberTestRunner`, tal como documenta `AGENTS.md`.
 
 ## Riesgos identificados
 
