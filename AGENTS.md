@@ -9,6 +9,7 @@ You are an expert Java and Spring Boot software engineer. Your objective is to d
 - **Main Class:** `com.example.demo.DemoApplication`
 - **Output Artifact:** `target/demo-0.0.1-SNAPSHOT.jar` (repackaged, executable).
 - **Maven Wrapper:** Always use `./mvnw` on Linux/macOS or `mvnw.cmd` on Windows. Do not use global `mvn`.
+- **Static frontend:** `public/` at the project root holds the web frontend (currently `index.html` with static "Hello World", Vue 3 and matcha.css via CDN). Served via `spring.web.resources.static-locations: file:public/` in `config/application.yml` (external config at project root). `file:public/` is relative to the working directory the app runs from.
 
 ### 🚨 Critical File & System Constraints
 - **POM Configuration:** `pom.xml` intentionally overrides `<licenses>`, `<developers>`, and `<scm>` with empty elements to prevent inheritance from the Spring Boot parent. **Do not remove or alter these empty elements** unless explicitly instructed to inherit parent values.
@@ -37,16 +38,22 @@ Never write production code without an initial failing test. Follow this exact l
 
 ### Directory Layout
 ```text
-src/
-├── main/
-│   └── java/com/example/demo/          # Production Source (Controllers, Services, Repositories)
-└── test/
-    ├── java/com/example/demo/
-    │   ├── bdd/                        # BDD Context
-    │   │   ├── CucumberTestRunner.java # JUnit 5 Cucumber Suite Runner
-    │   │   └── steps/                  # Step definition classes (@Given, @When, @Then)
-    └── resources/
-        └── features/                   # Gherkin .feature files
+├── config/
+│   └── application.yml                 # External Spring Boot config (project root): static-locations file:public/
+├── public/
+│   └── index.html                      # Static frontend homepage
+├── specs/                              # Spec files (NN-slug.md) and .spec-config.yml
+└── src/
+    ├── main/
+    │   └── java/com/example/demo/      # Production Source (Controllers, Services, Repositories)
+    └── test/
+        ├── java/com/example/demo/
+        │   ├── bdd/                    # BDD Context
+        │   │   ├── CucumberTestRunner.java                 # JUnit 5 Cucumber Suite Runner
+        │   │   └── steps/                                  # Step definition classes (@Given, @When, @Then)
+        │   │       └── CucumberSpringConfiguration.java    # @CucumberContextConfiguration + @SpringBootTest
+        └── resources/
+            └── features/               # Gherkin .feature files
 ```
 
 ### Base `CucumberTestRunner.java` Configuration
@@ -83,6 +90,8 @@ public class CucumberTestRunner {
 
 ### 2. Step Definitions & State Management
 - Use **`TestRestTemplate`** to interact with the endpoints of the running app instance hosted on the random web test port.
+  - **Spring Boot 4 specifics:** `TestRestTemplate` lives in `org.springframework.boot.resttestclient.TestRestTemplate` (not `org.springframework.boot.test.web.client`). Auto-configuration requires `@AutoConfigureTestRestTemplate` on the Cucumber context configuration class and `org.springframework.boot:spring-boot-starter-restclient` in test scope (for `RestTemplateBuilder`).
+  - **Context Wiring:** cucumber-spring requires a class in the glue package annotated with `@CucumberContextConfiguration`, `@SpringBootTest(webEnvironment = RANDOM_PORT)`, and `@AutoConfigureTestRestTemplate` (see `CucumberSpringConfiguration.java`).
 - **State Sharing:** Store scenario state in instance variables inside the step classes. Cucumber safely instantiates a fresh class instance for every individual scenario to prevent data leakage.
 - Clear or rollback test data between scenarios using Cucumber's `@Before`/`@After` hooks or Spring's `@Transactional`.
 
@@ -93,4 +102,5 @@ Always execute build and verification tasks through the wrapper:
 * **Build & Verify:** `./mvnw clean test package`
 * **Run Local Dev Server:** `./mvnw spring-boot:run`
 * **Run Specific Test Class:** `./mvnw test -Dtest=CucumberTestRunner` (or `DemoApplicationTests`)
+  * Note: `CucumberTestRunner` does not match Surefire's default naming patterns (`*Test`, `*Tests`), so BDD test execution must be invoked explicitly with `-Dtest=CucumberTestRunner`.
 * **Build OCI Container Image:** `./mvnw spring-boot:build-image`
